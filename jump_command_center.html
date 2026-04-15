@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump Digital — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f0;
+    --text2: #888;
+    --text3: #555;
+    --green: #4ade80;
+    --green-bg: rgba(74,222,128,0.08);
+    --green-border: rgba(74,222,128,0.2);
+    --yellow: #fbbf24;
+    --yellow-bg: rgba(251,191,36,0.08);
+    --yellow-border: rgba(251,191,36,0.2);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,0.08);
+    --red-border: rgba(248,113,113,0.2);
+    --blue: #60a5fa;
+    --blue-bg: rgba(96,165,250,0.08);
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --accent: #4ade80;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; min-height: 100vh; }
+  
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--accent); letter-spacing: 0.05em; }
+  .topbar-title { font-size: 13px; color: var(--text2); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .last-update { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); }
+  .refresh-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); padding: 5px 12px; border-radius: var(--radius); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .main { padding: 20px 24px; }
+
+  .semaforo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .sem-card { border-radius: var(--radius-lg); padding: 16px 18px; border: 1px solid; }
+  .sem-card.green { background: var(--green-bg); border-color: var(--green-border); }
+  .sem-card.yellow { background: var(--yellow-bg); border-color: var(--yellow-border); }
+  .sem-card.red { background: var(--red-bg); border-color: var(--red-border); }
+  .sem-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .sem-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sem-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+  .sem-card.green .sem-label { color: var(--green); }
+  .sem-card.yellow .sem-label { color: var(--yellow); }
+  .sem-card.red .sem-label { color: var(--red); }
+  .sem-count { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; line-height: 1; margin-bottom: 8px; }
+  .sem-card.green .sem-count { color: var(--green); }
+  .sem-card.yellow .sem-count { color: var(--yellow); }
+  .sem-card.red .sem-count { color: var(--red); }
+  .sem-names { font-size: 11px; color: var(--text2); line-height: 1.7; }
+
+  .loading-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px; text-align: center; color: var(--text2); margin-bottom: 20px; }
+  .loading-bar .spinner { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-bar { background: var(--red-bg); border: 1px solid var(--red-border); border-radius: var(--radius-lg); padding: 16px 20px; color: var(--red); margin-bottom: 20px; font-size: 13px; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { background: var(--surface); color: var(--text3); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  thead th.sticky { text-align: left; position: sticky; left: 0; z-index: 3; background: var(--surface); min-width: 150px; }
+  thead th.gm { background: rgba(96,165,250,0.05); color: #60a5fa99; }
+  thead th.gg { background: rgba(74,222,128,0.05); color: #4ade8099; }
+  thead th.gn { background: rgba(251,191,36,0.05); color: #fbbf2499; }
+  thead th.gga { background: rgba(167,139,250,0.05); color: #a78bfa99; }
+  .group-row th { padding: 6px 10px; font-size: 10px; text-align: center; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2) !important; }
+  tbody td { padding: 10px 10px; text-align: right; color: var(--text); white-space: nowrap; vertical-align: middle; }
+  tbody td.sticky { text-align: left; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 150px; }
+  tbody tr:hover td.sticky { background: var(--surface2) !important; }
+  .sub { font-size: 9px; color: var(--text3); display: block; font-family: 'DM Mono', monospace; }
+  .dash { color: var(--text3); }
+  .val-good { color: var(--green); }
+  .val-warn { color: var(--yellow); }
+  .val-bad { color: var(--red); }
+  .mono { font-family: 'DM Mono', monospace; }
+  .cn { font-size: 12px; font-weight: 500; color: var(--text); }
+  .cr { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .bdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
+  .badge { font-size: 9px; padding: 1px 6px; border-radius: 20px; font-weight: 500; }
+  .b-ecom { background: rgba(74,222,128,0.1); color: var(--green); }
+  .b-leads { background: rgba(167,139,250,0.1); color: var(--purple); }
+  .b-mixed { background: rgba(251,191,36,0.1); color: var(--yellow); }
+  .bbar-bg { width: 52px; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+  .bbar-f { height: 100%; border-radius: 2px; }
+  tfoot td { padding: 8px 10px; font-weight: 500; font-size: 11px; text-align: right; background: var(--surface); border-top: 1px solid var(--border2); color: var(--text2); font-family: 'DM Mono', monospace; }
+  tfoot td.sticky { text-align: left; position: sticky; left: 0; background: var(--surface); }
+
+  .detail-panel { display: none; margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .detail-panel.open { display: block; }
+  .back-btn { background: none; border: 1px solid var(--border2); color: var(--text2); padding: 6px 14px; border-radius: var(--radius); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-bottom: 16px; transition: all .15s; }
+  .back-btn:hover { border-color: var(--text2); color: var(--text); }
+  .d-title { font-size: 18px; font-weight: 500; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .d-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .dm { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; border: 1px solid var(--border); }
+  .dm-l { font-size: 10px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .dm-v { font-size: 18px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--text); }
+  .d-channels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .dc { background: var(--surface2); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); }
+  .dc-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .dc-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .dc-row:last-child { border: none; }
+  .dc-l { color: var(--text3); }
+  .dc-v { font-weight: 500; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; }
+  .ai-box { background: var(--surface2); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); }
+  .ai-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 10px; }
+  .ai-rec { display: flex; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--text); line-height: 1.5; }
+  .ai-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex-shrink: 0; }
+  .ask-btn { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); padding: 7px 16px; border-radius: var(--radius); font-size: 12px; cursor: pointer; margin-top: 12px; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+  .ask-btn:hover { background: rgba(74,222,128,0.15); }
+
+  .loading-row td { text-align: center !important; color: var(--text3); padding: 20px !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="logo">JUMP//</span>
+    <span class="topbar-title">Command Center</span>
+  </div>
+  <div class="topbar-right">
+    <span class="last-update" id="last-update">—</span>
+    <button class="refresh-btn" onclick="loadAllData()">↺ Actualizar</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="semaforo" id="semaforo">
+    <div class="sem-card green"><div class="sem-header"><span class="sem-dot" style="background:var(--green)"></span><span class="sem-label">Vienen bien</span></div><div class="sem-count" id="s-ok">—</div><div class="sem-names" id="s-ok-names">Cargando...</div></div>
+    <div class="sem-card yellow"><div class="sem-header"><span class="sem-dot" style="background:var(--yellow)"></span><span class="sem-label">Revisar campañas</span></div><div class="sem-count" id="s-warn">—</div><div class="sem-names" id="s-warn-names">Cargando...</div></div>
+    <div class="sem-card red"><div class="sem-header"><span class="sem-dot" style="background:var(--red)"></span><span class="sem-label">Atención urgente</span></div><div class="sem-count" id="s-bad">—</div><div class="sem-names" id="s-bad-names">Cargando...</div></div>
+  </div>
+
+  <div id="loading-msg" class="loading-bar"><div class="spinner"></div>Conectando con Google Sheets...</div>
+  <div id="error-msg" class="error-bar" style="display:none"></div>
+
+  <div class="table-wrap" id="table-wrap" style="display:none">
+    <table>
+      <thead>
+        <tr class="group-row">
+          <th class="sticky" rowspan="2" style="text-align:left;">Cliente</th>
+          <th rowspan="2" style="min-width:85px;">Gasto real</th>
+          <th rowspan="2" style="min-width:80px;">Gasto proy.</th>
+          <th class="gm" colspan="7" style="border-bottom:1px solid rgba(96,165,250,0.15);">Meta Ads</th>
+          <th class="gg" colspan="5" style="border-bottom:1px solid rgba(74,222,128,0.15);">Google Ads</th>
+          <th class="gn" colspan="5" style="border-bottom:1px solid rgba(251,191,36,0.15);">Negocio</th>
+          <th class="gga" colspan="2" style="border-bottom:1px solid rgba(167,139,250,0.15);">GA4</th>
+        </tr>
+        <tr>
+          <th class="gm">CPM</th>
+          <th class="gm">Art. carro</th>
+          <th class="gm">Inicio pago</th>
+          <th class="gm">Compras<span class="sub">val. compras</span></th>
+          <th class="gm">Gasto</th>
+          <th class="gm">ROAS</th>
+          <th class="gm">CPA</th>
+          <th class="gg">CPM</th>
+          <th class="gg">CPC</th>
+          <th class="gg">Clics</th>
+          <th class="gg">Conv.</th>
+          <th class="gg">ROAS</th>
+          <th class="gn">Facturación<span class="sub">TN</span></th>
+          <th class="gn">Órdenes</th>
+          <th class="gn">Unidades</th>
+          <th class="gn">CPA</th>
+          <th class="gn">Ticket prom.</th>
+          <th class="gga">Sesiones</th>
+          <th class="gga">Conv. WA</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+
+  <div class="detail-panel" id="detail-panel">
+    <button class="back-btn" onclick="closeDetail()">← Volver al tablero</button>
+    <div class="d-title" id="d-name"></div>
+    <div class="d-grid" id="d-kpis"></div>
+    <div class="d-channels" id="d-channels"></div>
+    <div class="ai-box">
+      <div class="ai-title">Recomendaciones automáticas</div>
+      <div id="d-recs"></div>
+      <button class="ask-btn" id="d-ask">Pedir análisis detallado con IA ↗</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY = 'AIzaSyBRMwRTAuNsOZQUwTQUdYcegIaQUe39Lk0';
+
+const CLIENTS = [
+  { id:'lk',      name:'LK Babies',      rubro:'Ropa bebés',        status:'ajustar', tipo:'ecom',   sheetId:'1IEz8TI-XxfAzqIrWu52LTdny3ihU8ECR55K0KlpRVmk' },
+  { id:'mui',     name:'Somos MUI',       rubro:'Moda mujer',        status:'ajustar', tipo:'ecom',   sheetId:'1zTi_cXt86CXpm61rHnJyqJhjcCXCDTho3NPzdQFZPAM' },
+  { id:'carol',   name:'Carol',           rubro:'Home & deco',       status:'ok',      tipo:'ecom',   sheetId:'1TgWepXwnIOBDytapyT-5k_43HuQrEJyoOf2mGAILIV8' },
+  { id:'vistage', name:'Vistage',         rubro:'Leads B2B',         status:'ok',      tipo:'leads',  sheetId:'1RmKQDoMnJGEgPIi3NrFE2T4OwXn8ltQAPqqTwSf29D8' },
+  { id:'ameri',   name:'Americars',       rubro:'Autos usados',      status:'ajustar', tipo:'ecom',   sheetId:'1xU9V2LUQjd4Gf3YK9fTkFZi3EVIGmQ3CevbXLczeGbo' },
+  { id:'carpas',  name:'3H Carpas',       rubro:'Carpas eventos',    status:'ok',      tipo:'mixed',  sheetId:'1cDsSXq3OwsaK46o2LNhtg5VhYwHosBQ1tDr132FuksM' },
+  { id:'tenda',   name:'La Tua Tenda',    rubro:'Deco / WhatsApp',   status:'alerta',  tipo:'leads',  sheetId:'1ZxIBFFB5RbXZhXBo_-NYi8HqYa3tAnlNUW0i2cak06I' },
+  { id:'indu',    name:'Inducort',        rubro:'Cortinas metálicas',status:'ajustar', tipo:'leads',  sheetId:'1Hz_mPjjgMXE510x1EZmyEwO4GHeSPwLDAAY1yzpfGNA' },
+  { id:'matt',    name:'Mattevi',         rubro:'Carpas & outdoor',  status:'ok',      tipo:'leads',  sheetId:'1P-3KEZfvc9nHkdnV3ZWDXQYzIFyAOqqCZWa6ZixEuIE' },
+  { id:'canning', name:'Lit Canning',     rubro:'Lubricentro',       status:'ok',      tipo:'leads',  sheetId:'1V80wU7MI1kBpJVAuWqo1LOXgHhC1pm9tmExtL78eu04' },
+  { id:'haydee',  name:'Tienda Haydee',   rubro:'Moda mujer',        status:'ajustar', tipo:'ecom',   sheetId:'1FHjgXxkWonn9cr9cmoHdiMKq14iIX8nPqFb5p833F_c' },
+  { id:'ladob',   name:'Lado B',          rubro:'Moda',              status:'ok',      tipo:'ecom',   sheetId:'1JY8LvYIrGKTxr3OS0zrf05fJnxwiyLrOBcDQCAwSfn0' },
+  { id:'galvez',  name:'Galvez',          rubro:'',                  status:'ok',      tipo:'ecom',   sheetId:'1BmLC-cAo3yt_JeoectLQKfAqZGzj4Mph0_mr5c82wN8' },
+];
+
+const fk = n => !n||n===0 ? '<span class="dash">—</span>' : n>=1000000 ? '$'+(n/1000000).toFixed(1)+'M' : '$'+Math.round(n/1000)+'K';
+const fkp = n => !n||n===0 ? '—' : n>=1000000 ? '$'+(n/1000000).toFixed(1)+'M' : '$'+Math.round(n/1000)+'K';
+const num = n => n>0 ? Math.round(n).toLocaleString('es-AR') : '<span class="dash">—</span>';
+const pct = (g,p) => p>0 ? Math.round(g/p*100) : 0;
+const bc = p => p>100 ? 'var(--red)' : p>80 ? 'var(--yellow)' : 'var(--green)';
+const dc = { ok:'var(--green)', ajustar:'var(--yellow)', alerta:'var(--red)' };
+const dash = '<span class="dash">—</span>';
+
+let clientData = {};
+
+async function fetchSheet(sheetId, tabName) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tabName)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.values || null;
+}
+
+function parseHeaders(rows) {
+  if (!rows || rows.length < 1) return {};
+  const headers = rows[0].map(h => h ? h.toString().trim().toLowerCase() : '');
+  const result = {};
+  rows.slice(1).forEach(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+    if (obj['date']) {
+      result[obj['date']] = obj;
+    }
+  });
+  return result;
+}
+
+function sumColumn(data, col) {
+  return Object.values(data).reduce((a, row) => {
+    const v = parseFloat((row[col]||'').toString().replace(/[^0-9.-]/g,''));
+    return a + (isNaN(v) ? 0 : v);
+  }, 0);
+}
+
+function getCurrentMonthData(data) {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const filtered = {};
+  Object.entries(data).forEach(([date, row]) => {
+    if (date && date.startsWith(ym)) filtered[date] = row;
+  });
+  return filtered;
+}
+
+async function loadClientData(client) {
+  try {
+    const [metaRaw, googleRaw, ga4Raw, tnRaw] = await Promise.all([
+      fetchSheet(client.sheetId, 'detrics_meta'),
+      fetchSheet(client.sheetId, 'detrics_google'),
+      fetchSheet(client.sheetId, 'detrics_ga4'),
+      fetchSheet(client.sheetId, 'detrics_tiendanube'),
+    ]);
+
+    const metaAll = parseHeaders(metaRaw);
+    const googleAll = parseHeaders(googleRaw);
+    const ga4All = parseHeaders(ga4Raw);
+    const tnAll = parseHeaders(tnRaw);
+
+    const meta = getCurrentMonthData(metaAll);
+    const google = getCurrentMonthData(googleAll);
+    const ga4 = getCurrentMonthData(ga4All);
+    const tn = getCurrentMonthData(tnAll);
+
+    const metaSpend = sumColumn(meta, 'amount spent') || sumColumn(meta, 'amount_spent') || sumColumn(meta, 'importe gastado') || sumColumn(meta, 'spend');
+    const metaCompras = sumColumn(meta, 'website purchases') || sumColumn(meta, 'website_purchases') || sumColumn(meta, 'compras');
+    const metaValCompras = sumColumn(meta, 'website purchase value') || sumColumn(meta, 'website_purchase_value') || sumColumn(meta, 'purchase_value');
+    const metaArtCarro = sumColumn(meta, 'website adds to cart') || sumColumn(meta, 'website_adds_to_cart') || sumColumn(meta, 'add to cart') || sumColumn(meta, 'website add to cart');
+    const metaInicioPago = sumColumn(meta, 'website checkouts initiated') || sumColumn(meta, 'website_checkouts_initiated') || sumColumn(meta, 'checkouts initiated') || sumColumn(meta, 'inicio de pago');
+    const metaImpressiones = sumColumn(meta, 'impressions');
+    const metaReach = sumColumn(meta, 'reach');
+    const metaCpm = metaImpressiones > 0 ? (metaSpend / metaImpressiones * 1000) : 0;
+    const metaRoas = metaSpend > 0 && metaValCompras > 0 ? metaValCompras / metaSpend : 0;
+    const metaCpa = metaCompras > 0 ? metaSpend / metaCompras : 0;
+
+    const gSpend = sumColumn(google, 'cost') || sumColumn(google, 'costo');
+    const gClics = sumColumn(google, 'clicks') || sumColumn(google, 'clics');
+    const gImpr = sumColumn(google, 'impressions');
+    const gConv = sumColumn(google, 'conversions') || sumColumn(google, 'conversiones');
+    const gCpm = gImpr > 0 ? (gSpend / gImpr * 1000) : 0;
+    const gCpc = gClics > 0 ? gSpend / gClics : 0;
+
+    const ga4Ses = sumColumn(ga4, 'sessions') || sumColumn(ga4, 'sesiones');
+    const ga4WaConv = sumColumn(ga4, 'user conversions') || 0;
+
+    const tnFac = (() => {
+      if (!tnRaw || tnRaw.length < 2) return 0;
+      const headers = tnRaw[0].map(h => h ? h.toString().trim().toLowerCase() : '');
+      const totalIdx = headers.findIndex(h => h.includes('order total') && !h.includes('usd') && !h.includes('original'));
+      if (totalIdx < 0) return 0;
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      return tnRaw.slice(1).reduce((a, row) => {
+        const date = row[0] || '';
+        if (!date.startsWith(ym)) return a;
+        const v = parseFloat((row[totalIdx]||'').toString().replace(/[^0-9.-]/g,''));
+        return a + (isNaN(v) ? 0 : v);
+      }, 0);
+    })();
+
+    const tnOrdenes = (() => {
+      if (!tnRaw || tnRaw.length < 2) return 0;
+      const headers = tnRaw[0].map(h => h ? h.toString().trim().toLowerCase() : '');
+      const orderIdx = headers.findIndex(h => h.includes('order id'));
+      if (orderIdx < 0) return 0;
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const ids = new Set();
+      tnRaw.slice(1).forEach(row => {
+        const date = row[0] || '';
+        if (date.startsWith(ym) && row[orderIdx]) ids.add(row[orderIdx]);
+      });
+      return ids.size;
+    })();
+
+    const totalSpend = metaSpend + gSpend;
+    const ticket = tnOrdenes > 0 ? tnFac / tnOrdenes : 0;
+    const cpa = (metaCompras + gConv) > 0 ? totalSpend / (metaCompras + gConv) : 0;
+    const roas = totalSpend > 0 && tnFac > 0 ? tnFac / totalSpend : 0;
+
+    return {
+      metaSpend, metaCompras, metaValCompras, metaArtCarro, metaInicioPago,
+      metaCpm, metaRoas, metaCpa,
+      gSpend, gClics, gImpr, gConv, gCpm, gCpc,
+      ga4Ses, ga4WaConv,
+      tnFac, tnOrdenes, ticket, cpa, roas,
+      totalSpend,
+      loaded: true
+    };
+  } catch(e) {
+    console.error('Error loading', client.name, e);
+    return { loaded: false, error: e.message };
+  }
+}
+
+async function loadAllData() {
+  document.getElementById('loading-msg').style.display = 'block';
+  document.getElementById('table-wrap').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
+
+  const results = await Promise.all(CLIENTS.map(c => loadClientData(c)));
+  results.forEach((r, i) => { clientData[CLIENTS[i].id] = r; });
+
+  document.getElementById('loading-msg').style.display = 'none';
+  document.getElementById('table-wrap').style.display = 'block';
+
+  const now = new Date();
+  document.getElementById('last-update').textContent = `Actualizado ${now.toLocaleDateString('es-AR')} ${now.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'})}`;
+
+  renderSemaforo();
+  renderTable();
+}
+
+function renderSemaforo() {
+  const ok = CLIENTS.filter(c => c.status === 'ok');
+  const aj = CLIENTS.filter(c => c.status === 'ajustar');
+  const al = CLIENTS.filter(c => c.status === 'alerta');
+  document.getElementById('s-ok').textContent = ok.length;
+  document.getElementById('s-warn').textContent = aj.length;
+  document.getElementById('s-bad').textContent = al.length;
+  document.getElementById('s-ok-names').textContent = ok.map(c=>c.name).join(' · ');
+  document.getElementById('s-warn-names').textContent = aj.map(c=>c.name).join(' · ');
+  document.getElementById('s-bad-names').textContent = al.length > 0 ? al.map(c=>c.name).join(' · ') : '—';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  const presupuestos = {
+    lk:2200000, mui:4090000, carol:9100000, vistage:7149000, ameri:3310000,
+    carpas:2010000, tenda:3100000, indu:800000, matt:600000, canning:800000,
+    haydee:800000, ladob:1500000, galvez:1500000
+  };
+
+  tbody.innerHTML = CLIENTS.map(c => {
+    const d = clientData[c.id];
+    const pres = presupuestos[c.id] || 0;
+    const proy = Math.round(pres / 30 * new Date().getDate());
+    const p = d && d.loaded ? pct(d.totalSpend, pres) : 0;
+    const tipo = c.tipo==='ecom'?'<span class="badge b-ecom">ecom</span>':c.tipo==='leads'?'<span class="badge b-leads">leads</span>':'<span class="badge b-mixed">ecom+wa</span>';
+
+    if (!d || !d.loaded) {
+      return `<tr onclick="openDetail('${c.id}')">
+        <td class="sticky"><div style="display:flex;align-items:flex-start;gap:6px;"><span class="bdot" style="background:${dc[c.status]};margin-top:3px;"></span><div><div class="cn">${c.name}</div><div class="cr">${c.rubro} ${tipo}</div></div></div></td>
+        <td colspan="18" style="text-align:center;color:var(--text3);font-size:11px;">Error al cargar datos</td>
+      </tr>`;
+    }
+
+    const metaRoasV = d.metaRoas > 0 ? `<span class="${d.metaRoas>=4?'val-good':'val-warn'} mono">${d.metaRoas.toFixed(2)}x</span>` : dash;
+    const metaCpaV = d.metaCpa > 0 ? `<span class="${d.metaCpa>60000?'val-warn':''} mono">${fk(d.metaCpa)}</span>` : dash;
+    const metaCmpV = d.metaCompras > 0 ? `<span class="mono">${Math.round(d.metaCompras)}</span><span class="sub">${fkp(d.metaValCompras)}</span>` : dash;
+    const waV = c.tipo==='ecom' ? dash : d.ga4WaConv > 0 ? `<span class="val-good mono">${Math.round(d.ga4WaConv)}</span>` : dash;
+
+    return `<tr onclick="openDetail('${c.id}')">
+      <td class="sticky"><div style="display:flex;align-items:flex-start;gap:6px;"><span class="bdot" style="background:${dc[c.status]};margin-top:3px;flex-shrink:0;"></span><div><div class="cn">${c.name}</div><div class="cr">${c.rubro} ${tipo}</div></div></div></td>
+      <td><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><span class="mono">${fkp(d.totalSpend)}</span><div class="bbar-bg"><div class="bbar-f" style="width:${Math.min(p,100)}%;background:${bc(p)}"></div></div><span style="font-size:9px;color:var(--text3)">${p}% ppto</span></div></td>
+      <td class="mono">${fkp(proy)}</td>
+      <td class="mono">${d.metaCpm > 0 ? '$'+Math.round(d.metaCpm) : dash}</td>
+      <td class="mono">${d.metaArtCarro > 0 ? num(d.metaArtCarro) : dash}</td>
+      <td class="mono">${d.metaInicioPago > 0 ? num(d.metaInicioPago) : dash}</td>
+      <td>${metaCmpV}</td>
+      <td class="mono">${fkp(d.metaSpend) !== '—' ? fk(d.metaSpend) : dash}</td>
+      <td>${metaRoasV}</td>
+      <td>${metaCpaV}</td>
+      <td class="mono">${d.gCpm > 0 ? '$'+Math.round(d.gCpm) : dash}</td>
+      <td class="mono">${d.gCpc > 0 ? '$'+Math.round(d.gCpc) : dash}</td>
+      <td class="mono">${d.gClics > 0 ? num(d.gClics) : dash}</td>
+      <td class="mono">${d.gConv > 0 ? Math.round(d.gConv) : dash}</td>
+      <td class="mono">${dash}</td>
+      <td class="mono">${d.tnFac > 0 ? fk(d.tnFac) : dash}</td>
+      <td class="mono">${d.tnOrdenes > 0 ? d.tnOrdenes : dash}</td>
+      <td class="mono">${dash}</td>
+      <td class="mono">${d.cpa > 0 ? fk(d.cpa) : dash}</td>
+      <td class="mono">${d.ticket > 0 ? fk(d.ticket) : dash}</td>
+      <td class="mono">${d.ga4Ses > 0 ? num(d.ga4Ses) : dash}</td>
+      <td>${waV}</td>
+    </tr>`;
+  }).join('');
+
+  const totSpend = Object.values(clientData).reduce((a,d)=>a+(d&&d.loaded?d.totalSpend:0),0);
+  const totFac = Object.values(clientData).reduce((a,d)=>a+(d&&d.loaded?d.tnFac:0),0);
+  const totOrd = Object.values(clientData).reduce((a,d)=>a+(d&&d.loaded?d.tnOrdenes:0),0);
+  const totSes = Object.values(clientData).reduce((a,d)=>a+(d&&d.loaded?d.ga4Ses:0),0);
+  const totWa = Object.values(clientData).reduce((a,d)=>a+(d&&d.loaded?d.ga4WaConv:0),0);
+  document.getElementById('tfoot').innerHTML = `<tr>
+    <td class="sticky">Totales</td>
+    <td>${fkp(totSpend)}</td><td>—</td>
+    <td>—</td><td>—</td><td>—</td><td>—</td><td>${fkp(totSpend)}</td><td>—</td><td>—</td>
+    <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+    <td>${fkp(totFac)}</td><td>${totOrd}</td><td>—</td><td>—</td><td>—</td>
+    <td>${Math.round(totSes).toLocaleString('es-AR')}</td><td>${Math.round(totWa)||'—'}</td>
+  </tr>`;
+}
+
+function dcRow(l,v){return`<div class="dc-row"><span class="dc-l">${l}</span><span class="dc-v">${v||'—'}</span></div>`;}
+
+function getAIRecs(c, d) {
+  const r = [];
+  if (!d || !d.loaded) return ['No se pudieron cargar los datos de esta cuenta.'];
+  if (d.metaRoas > 0 && d.metaRoas < 3) r.push(`ROAS Meta ${d.metaRoas.toFixed(2)}x por debajo de 3x — revisar creatividades y segmentación.`);
+  if (d.metaRoas >= 5) r.push(`ROAS Meta ${d.metaRoas.toFixed(2)}x excelente — buen momento para escalar presupuesto.`);
+  if (d.metaArtCarro > 0 && d.metaCompras > 0) {
+    const conv = Math.round(d.metaCompras/d.metaArtCarro*100);
+    if (conv < 15) r.push(`Conversión carro → compra baja (${conv}%) — activar remarketing de carritos abandonados.`);
+  }
+  if (d.metaSpend > 0 && d.metaCompras === 0 && c.tipo === 'ecom') r.push('Meta sin compras registradas — verificar pixel y eventos de conversión.');
+  if (d.gClics > 0 && d.gConv === 0) r.push('Google con clics pero sin conversiones — revisar landing page y tracking.');
+  if (d.cpa > 60000) r.push(`CPA global de ${fkp(d.cpa)} elevado — analizar campañas ineficientes.`);
+  if (c.tipo !== 'ecom' && d.ga4WaConv === 0) r.push('Sin conversaciones WhatsApp registradas — verificar tracking del botón WA.');
+  if (r.length === 0) r.push('Performance dentro de parámetros normales. Continuar monitoreando evolución semanal.');
+  return r;
+}
+
+function openDetail(id) {
+  const c = CLIENTS.find(x => x.id === id);
+  const d = clientData[id] || {};
+  document.getElementById('d-name').innerHTML = `<span class="bdot" style="background:${dc[c.status]}"></span>${c.name} <span style="font-size:13px;color:var(--text3);font-weight:400;">— ${c.rubro}</span>`;
+  document.getElementById('d-kpis').innerHTML = `
+    <div class="dm"><div class="dm-l">Gasto real</div><div class="dm-v">${fkp(d.totalSpend)||'—'}</div></div>
+    <div class="dm"><div class="dm-l">Facturación TN</div><div class="dm-v">${fkp(d.tnFac)||'—'}</div></div>
+    <div class="dm"><div class="dm-l">ROAS global</div><div class="dm-v">${d.roas>0?d.roas.toFixed(2)+'x':'—'}</div></div>
+    <div class="dm"><div class="dm-l">CPA global</div><div class="dm-v">${fkp(d.cpa)||'—'}</div></div>
+    <div class="dm"><div class="dm-l">Órdenes TN</div><div class="dm-v">${d.tnOrdenes||'—'}</div></div>
+    <div class="dm"><div class="dm-l">Ticket prom.</div><div class="dm-v">${fkp(d.ticket)||'—'}</div></div>
+    <div class="dm"><div class="dm-l">Sesiones GA4</div><div class="dm-v">${d.ga4Ses>0?Math.round(d.ga4Ses).toLocaleString('es-AR'):'—'}</div></div>
+    <div class="dm"><div class="dm-l">Conv. WA</div><div class="dm-v">${d.ga4WaConv>0?Math.round(d.ga4WaConv):'—'}</div></div>`;
+  document.getElementById('d-channels').innerHTML = `
+    <div class="dc" style="border-top:2px solid var(--blue);">
+      <div class="dc-title" style="color:var(--blue);">Meta Ads</div>
+      ${dcRow('CPM', d.metaCpm>0?'$'+Math.round(d.metaCpm):null)}
+      ${dcRow('Art. al carro', d.metaArtCarro>0?Math.round(d.metaArtCarro):null)}
+      ${dcRow('Inicio de pago', d.metaInicioPago>0?Math.round(d.metaInicioPago):null)}
+      ${dcRow('Compras', d.metaCompras>0?Math.round(d.metaCompras):null)}
+      ${dcRow('Valor compras', d.metaValCompras>0?fkp(d.metaValCompras):null)}
+      ${dcRow('Gasto', fkp(d.metaSpend))}
+      ${dcRow('ROAS', d.metaRoas>0?d.metaRoas.toFixed(2)+'x':null)}
+      ${dcRow('CPA', d.metaCpa>0?fkp(d.metaCpa):null)}
+    </div>
+    <div class="dc" style="border-top:2px solid var(--green);">
+      <div class="dc-title" style="color:var(--green);">Google Ads</div>
+      ${dcRow('CPM', d.gCpm>0?'$'+Math.round(d.gCpm):null)}
+      ${dcRow('CPC', d.gCpc>0?'$'+Math.round(d.gCpc):null)}
+      ${dcRow('Clics', d.gClics>0?Math.round(d.gClics).toLocaleString('es-AR'):null)}
+      ${dcRow('Conversiones', d.gConv>0?Math.round(d.gConv):null)}
+      ${dcRow('Gasto', fkp(d.gSpend))}
+    </div>
+    <div class="dc" style="border-top:2px solid var(--yellow);">
+      <div class="dc-title" style="color:var(--yellow);">Negocio</div>
+      ${dcRow('Facturación TN', fkp(d.tnFac))}
+      ${dcRow('Órdenes', d.tnOrdenes||null)}
+      ${dcRow('Ticket prom.', fkp(d.ticket))}
+      ${dcRow('CPA global', fkp(d.cpa))}
+      ${dcRow('ROAS global', d.roas>0?d.roas.toFixed(2)+'x':null)}
+    </div>
+    <div class="dc" style="border-top:2px solid var(--purple);">
+      <div class="dc-title" style="color:var(--purple);">GA4</div>
+      ${dcRow('Sesiones', d.ga4Ses>0?Math.round(d.ga4Ses).toLocaleString('es-AR'):null)}
+      ${dcRow('Conv. WA', d.ga4WaConv>0?Math.round(d.ga4WaConv):null)}
+    </div>`;
+  const recs = getAIRecs(c, d);
+  document.getElementById('d-recs').innerHTML = recs.map(r=>`<div class="ai-rec"><div class="ai-dot"></div><div>${r}</div></div>`).join('');
+  document.getElementById('d-ask').onclick = () => {
+    const msg = `Haceme un análisis completo de ${c.name} (${c.rubro}) con estos datos del mes: Meta gasto ${fkp(d.metaSpend)}, ROAS ${d.metaRoas?.toFixed(2)||0}, compras ${Math.round(d.metaCompras||0)}, art. carro ${Math.round(d.metaArtCarro||0)}, inicio pago ${Math.round(d.metaInicioPago||0)}. Google clics ${Math.round(d.gClics||0)}, conversiones ${Math.round(d.gConv||0)}, gasto ${fkp(d.gSpend)}. Facturación TN ${fkp(d.tnFac)}, órdenes ${d.tnOrdenes||0}, CPA ${fkp(d.cpa)}, sesiones GA4 ${Math.round(d.ga4Ses||0)}. ¿Qué acciones concretas recomendás para mejorar performance este mes?`;
+    alert('Copiá este texto y pegalo en Claude:\n\n' + msg);
+  };
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+loadAllData();
+</script>
+</body>
+</html>
